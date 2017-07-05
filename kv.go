@@ -65,7 +65,7 @@ type Options struct {
 	ValueGCRunInterval time.Duration
 
 	// Size of single value log file.
-	ValueLogFileSize int
+	ValueLogFileSize int64
 
 	// The following affect value compression in value log.
 	ValueCompressionMinSize  int     // Minimal size in bytes of KV pair to be compressed.
@@ -412,12 +412,13 @@ func (s *KV) Exists(key []byte) (bool, error) {
 
 func (s *KV) updateOffset(ptrs []valuePointer) {
 	ptr := ptrs[len(ptrs)-1]
-
 	s.Lock()
 	defer s.Unlock()
 	if s.vptr.Fid < ptr.Fid {
 		s.vptr = ptr
 	} else if s.vptr.Offset < ptr.Offset {
+		s.vptr = ptr
+	} else if s.vptr.Fid == ptr.Fid && s.vptr.Offset == ptr.Offset && s.vptr.Len < ptr.Len {
 		s.vptr = ptr
 	}
 }
@@ -740,7 +741,7 @@ func (s *KV) flushMemtable(lc *y.LevelCloser) error {
 			return nil
 		}
 
-		if ft.vptr.Fid > 0 || ft.vptr.Offset > 0 {
+		if ft.vptr.Fid > 0 || ft.vptr.Offset > 0 || ft.vptr.Len > 0 {
 			s.elog.Printf("Storing offset: %+v\n", ft.vptr)
 			offset := make([]byte, 10)
 			s.Lock() // For vptr.

@@ -11,6 +11,16 @@ Badger aims to provide an equal or better speed compared to industry leading KV 
 
 **You can read more about Badger in [our blog post](https://open.dgraph.io/post/badger/).**
 
+## Installation and Usage
+
+`go get -v github.com/dgraph-io/badger`
+
+If you want to run tests, also get testing dependencies by passing in `-t` flag.
+
+`go get -t -v github.com/dgraph-io/badger`
+
+From here, follow [docs](https://godoc.org/github.com/dgraph-io/badger) for usage.
+
 ## Design Goals
 
 Badger has these design goals in mind:
@@ -23,6 +33,10 @@ Badger has these design goals in mind:
 ### Non-Goals
 
 - Try to be a database.
+
+## Video Tutorials
+
+- **[Getting Started - Opening your first database, and basic setting and getting](https://www.youtube.com/watch?v=XBKq39caRZ8)** by [1lann](https://github.com/1lann)
 
 ## Users
 
@@ -86,3 +100,18 @@ Every time Badger opens the directory, it would first replay the updates after t
 This technique ensures data persistence in face of crashes.
 
 Furthermore, Badger can be run with `SyncWrites` option, which would open the WAL with O_DSYNC flag, hence syncing the writes to disk on every write.
+
+## Frequently Asked Questions
+
+- **My writes are really slow. Why?**
+
+You're probably doing writes serially, using `Set`. To get the best write performance, use `BatchSet`, and call it
+concurrently from multiple goroutines.
+
+- **I don't see any disk write. Why?**
+
+If you're using Badger with `SyncWrites=false`, then your writes might not be written to value log
+and won't get synced to disk immediately. Writes to LSM tree are done inmemory first, before they
+get compacted to disk. The compaction would only happen once `MaxTableSize` has been reached. So, if
+you're doing a few writes and then checking, you might not see anything on disk. Once you `Close`
+the store, you'll see these writes on disk.
